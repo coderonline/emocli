@@ -1,0 +1,166 @@
+#!/usr/bin/bash
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110- 1301, USA.
+#
+# Author: Max Christian Pohle (https://coderonline.de/)
+# ==============================================================================
+
+shopt -s nocasematch
+
+hex2dec() { printf '%d' $1 2>/dev/null; }
+dec2hex() { printf '%x' $1 2>/dev/null; }
+
+printblock() {
+    if [[ ! "$5" =~ .*$FILTER.* ]]; then return ; fi
+    echo -e "\n\e[4m$1..$2 : $5\e[0m\n";
+    for i in $(seq $(hex2dec $1) $(hex2dec $2));
+    do
+        test -n "$3" \
+            && printf "\U$(dec2hex $i)\U$3 %x\n" $i \
+            || printf "\U$(dec2hex $i) %x\n" $i
+    done | column
+}
+
+FILTER=""
+if test "$1" = "filter"; then
+        FILTER=$2
+        shift ; shift
+fi
+
+# if called with two parameters in decimal [0-9]+ print only that block
+if test "${1-0}" -lt "${2-0}" &>/dev/null ; then
+    printblock $1 $2 '' '' 'custom range (decimal)'
+    exit
+
+# if called with two parameters in hex [0-9a-f]+ print only that block
+elif test "$(hex2dec ${1:-0})" -lt "$(hex2dec ${2:-0})" &>/dev/null ; then
+    printblock $1 $2 '' '' 'custom range (hex)'
+    exit
+
+# explicit `text` monochrome or `emoji`/image type in color, default uncertain
+elif test "$1" = "text" ; then
+    MODIFIER=FE0E
+elif test "$1" = "emoji" ; then
+    MODIFIER=FE0F
+elif test "$1" = "screen" ; then
+    MODIFIER=20E2
+elif test "$1" = "keycap" ; then
+    MODIFIER=20E3
+    if test "$2" = "text"; then
+            MODIFIER=FE0E\\U$MODIFIER
+    fi
+
+# FITZPATRICK skin color tones...
+elif test "$1" = "FP1" || test "$2" = "FP2" ; then
+    MODIFIER=1F3FB
+elif test "$1" = "FP3" ; then
+    MODIFIER=1F3FC
+elif test "$1" = "FP4" ; then
+    MODIFIER=1F3FD
+elif test "$1" = "FP5" ; then
+    MODIFIER=1F3FE
+elif test "$1" = "FP6" ; then
+    MODIFIER=1F3FF
+
+# if none of these modifiers were used a hex value can also be manually entered
+else
+    MODIFIER=$1
+fi
+
+printblock  0x2100   0x214F   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Letterlike_Symbols"
+printblock  0x2200   0x22FF   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Mathematical_Operators_(Unicode_block)"
+printblock  0x2300   0x233F   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Miscellaneous_Technical"
+printblock  0x2500   0x257F   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Box-drawing_character#Box_Drawing"
+printblock  0x2580   0x259F   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Box-drawing_character#Block_Elements"
+printblock  0x2600   0x26FF   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Miscellaneous_Symbols"
+printblock  0x2700   0x27BF   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Dingbat#Dingbats_Unicode_block"
+printblock  0x270A   0x270F   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Dingbat#Skin_tones"
+printblock  0x2900   0x297F   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Supplemental_Arrows-B"
+printblock  0x2A00   0x2AFF   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Supplemental_Mathematical_Operators"
+printblock  0x2B00   0x2BFF   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Letterlike_Symbols"
+printblock  0x1D400  0x1D7FF  "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Mathematical_Alphanumeric_Symbols"
+printblock  0x1F30D  0x1F5FA  "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Miscellaneous_Symbols_and_Pictographs"
+printblock  0x1F600  0x1F64F  "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Emoticons_(Unicode_block)"
+printblock  0x1F680  0x1F6FF  "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Transport_and_Map_Symbols"
+printblock  0x1F900  0x1F9FF  "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Supplemental_Symbols_and_Pictographs"
+printblock  0x1FA70  0x1FAFF  "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Symbols_and_Pictographs_Extended-A"
+printblock  0x1FB00  0x1FBCA  "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Box-drawing_character#Symbols_for_Legacy_Computing"
+printblock  0x1FBF0  0x1FBF9  "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/Box-drawing_character#Symbols_for_Legacy_Computing"
+printblock  0xF100   0xF3FF   "$MODIFIER" "$FILTER" "https://www.nerdfonts.com/?font_logos"
+printblock  0xF900   0xFAFF   "$MODIFIER" "$FILTER" "https://en.wikipedia.org/wiki/CJK_Compatibility_Ideographs"
+
+# ==============================================================================
+# = PURPOSE =
+#
+# While the Unicode Consortium provides a PDF with all emoticons and special
+# symbols, it is not always desirable to install all necessary fonts on all
+# machines to support every symbol. Instead one may choose to only use existing
+# symbols in terminal applications like mutt, Vim or powerline. This script
+# helps to identify usable symbols and check terminal capabilities.
+#
+# = USAGE EXAMPLES =
+#
+# == SIMPLE PARAMETERS ==
+#
+# print all symbols...
+# $ emocli
+#
+# print the text (monochrome) variant (use modifier)
+# $ emocli text
+#
+# print the iconic variant, explicitly with a modifier (often the default)
+# $ emocli emoji
+#
+# custom ranges (hex or decimal, both works):
+# $ emocli 0x41 0x5A
+# $ emocli 65 90
+#
+# == FILTERS ==
+#
+# $ emocli filter math
+# $ emocli filter emoticons
+# $ emocli filter emoticons text
+# $ emocli filter emoticons text
+# $ emocli filter letterlike keycap
+# $ emocli filter letterlike keycap text
+# $ emocli filter emoticons FP3 :: emoticons with skin-tone 4
+# $ emocli filter emoticons FP4 :: emoticons with skin-tone 4
+# $ emocli filter emoticons FP5 :: emoticons with skin-tone 4
+# $ emocli filter emoticons FP6 :: emoticons with skin-tone 4
+# $ emocli filter legacy_computing
+# $ emocli filter Box_Drawing
+# $ emocli filter Technical
+# $ emocli filter block_ele
+#
+# = MAKE USE OF THE SYMBOLS =
+#
+# printf  $ printf '\U1f600'
+# echo    $ echo -e '\U1f600'
+# HTML    $ &1f600;
+# Windows $ [ALT]+[x]1f600
+# Vim     $ i[C-v]U1f600[ESC]
+# ibus    $ [CTRL]+[SHIFT]+[u]1f600[space]
+# ibus    $ [CTRL]+[.] ??
+
+# = SEE ALSO =
+#
+# https://www.unicode.org/charts/PDF/U1F300.pdf
+# man console_codes
+#
+# ==============================================================================
+# = MODELINE =
+# see `:help modeline` from within Vim.
+#
+# vim: expandtab sts=4 tabstop=4 shiftwidth=4
